@@ -26,10 +26,18 @@ class Phone(Field):
 
 class Birthday(Field):
     def __init__(self, value):
+        if not self.is_valid(value):
+            raise ValueError("Invalid date format. Use DD.MM.YYYY.")
+        super().__init__(value)
+
+    @staticmethod
+    def is_valid(value):
         try:
-            self.value = datetime.strptime(value, "%d.%m.%Y")
+            datetime.strptime(value, "%d.%m.%Y")
+            return True
         except ValueError:
-            raise ValueError("Invalid date format. Use DD.MM.YYYY")
+            return False
+
 
 class Record:
     def __init__(self, name):

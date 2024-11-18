@@ -1,8 +1,8 @@
+import pickle
 from collections import UserDict
 from datetime import datetime, timedelta
 
-from collections import UserDict
-from datetime import datetime, timedelta
+
 
 class Field:
     def __init__(self, value):
@@ -11,8 +11,10 @@ class Field:
     def __str__(self):
         return str(self.value)
 
+
 class Name(Field):
     pass
+
 
 class Phone(Field):
     def __init__(self, value):
@@ -23,6 +25,7 @@ class Phone(Field):
     @staticmethod
     def is_valid(value):
         return value.isdigit() and len(value) == 10
+
 
 class Birthday(Field):
     def __init__(self, value):
@@ -79,8 +82,9 @@ class Record:
 
     def __str__(self):
         phones = ', '.join(p.value for p in self.phones)
-        birthday = self.show_birthday() if self.birthday else "Not set"
+        birthday = self.show_birthday()
         return f"{self.name.value}: {phones}; Birthday: {birthday}"
+
 
 class AddressBook(UserDict):
     def add_record(self, record):
@@ -103,13 +107,40 @@ class AddressBook(UserDict):
                 bday = datetime.strptime(record.birthday.value, "%d.%m.%Y")
                 this_year_bday = bday.replace(year=today.year)
 
-                if 0 <= (this_year_bday - today).days <= 7:
-                    upcoming_birthdays.append(f"{record.name.value}: {this_year_bday.strftime('%d.%m.%Y')}")
 
+                if this_year_bday < today:
+                    this_year_bday = this_year_bday.replace(year=today.year + 1)
+
+                congrats_date = this_year_bday
+                if this_year_bday.weekday() == 5:
+                    congrats_date += timedelta(days=2)  
+                elif this_year_bday.weekday() == 6:  
+                    congrats_date += timedelta(days=1)  
+
+            
+                days_until_congrats = (congrats_date - today).days
+
+                if 0 <= days_until_congrats <= 7:
+                    upcoming_birthdays.append(
+                        f"{record.name.value}: {congrats_date.strftime('%d.%m.%Y')}"
+                )
         if not upcoming_birthdays:
             return "No birthdays in the next week."
 
         return "\n".join(upcoming_birthdays)
+
+def save_data(book, filename="addressbook.pkl"):
+    with open(filename, "wb") as f:
+        pickle.dump(book, f)
+
+
+def load_data(filename="addressbook.pkl"):
+    try:
+        with open(filename, "rb") as f:
+            return pickle.load(f)
+    except FileNotFoundError:
+        return AddressBook()
+
 
 def input_error(func):
     def wrapper(*args, **kwargs):
@@ -122,6 +153,7 @@ def input_error(func):
         except ValueError as e:
             return f"Error: {e}"
     return wrapper
+
 
 @input_error
 def add_contact(args, book):
@@ -136,6 +168,7 @@ def add_contact(args, book):
     record.add_phone(phone)
     return message
 
+
 @input_error
 def change_contact(args, book):
     name, old_phone, new_phone = args
@@ -145,6 +178,7 @@ def change_contact(args, book):
     else:
         return f"Error: contact '{name}' not found."
 
+
 @input_error
 def show_phone(args, book):
     name = args[0]
@@ -153,6 +187,7 @@ def show_phone(args, book):
         return f"{name}: {', '.join(phone.value for phone in record.phones)}"
     else:
         return f"Error: contact '{name}' not found."
+
 
 @input_error
 def add_birthday(args, book):
@@ -164,6 +199,7 @@ def add_birthday(args, book):
     else:
         return f"Error: contact '{name}' not found."
 
+
 @input_error
 def show_birthday(args, book):
     name = args[0]
@@ -173,17 +209,20 @@ def show_birthday(args, book):
     else:
         return f"Error: contact '{name}' not found."
 
+
 @input_error
 def birthdays(args, book):
     return book.get_upcoming_birthdays()
+
 
 def parse_input(user_input):
     cmd, *args = user_input.split()
     cmd = cmd.strip().lower()
     return cmd, args
 
+
 def main():
-    book = AddressBook()
+    book = load_data()
     print("Welcome to the assistant bot!")
     while True:
         user_input = input("Enter a command: ")
@@ -191,6 +230,7 @@ def main():
 
         if command in ["close", "exit"]:
             print("Good bye!")
+            save_data(book)
             break
         elif command == "hello":
             print("How can I help you?")
@@ -210,6 +250,7 @@ def main():
             print(birthdays(args, book))
         else:
             print("Invalid command.")
+
 
 if __name__ == "__main__":
     main()
